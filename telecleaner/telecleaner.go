@@ -1,12 +1,10 @@
 package telecleaner
 
 import (
-	"context"
 	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -373,15 +371,12 @@ func (te *Telecleaner) cleanupOne(pod corev1.Pod, dryrun bool) error {
 		return err
 	}
 
-    return fmt.Errorf("Label? %s", deployment.Labels["telepresence"]);
+	telepresenceName := deployment.Labels["telepresence"]
+	originalDeploymentName := strings.ReplaceAll(deploymentName, "-"+telepresenceName, "")
 
 	lac := KubernetesLastAppliedConfiguration{}
-	json.Unmarshal(([]byte)(deployment.Annotations["kubectl.kubernetes.io/last-applied-configuration"]), &lac)
-	if lac.Metadata.SelfLink == "" {
-		return fmt.Errorf("Can't find original Deployment name in annotations: %s", pod.Name)
-	}
 
-	originalDeployment, err := deploymentClientset.Get(context.TODO(), filepath.Base(lac.Metadata.SelfLink), metav1.GetOptions{})
+	originalDeployment, err := deploymentClientset.Get(context.TODO(), originalDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
