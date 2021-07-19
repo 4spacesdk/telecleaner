@@ -3,6 +3,7 @@ package telecleaner
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -371,11 +372,11 @@ func (te *Telecleaner) cleanupOne(pod corev1.Pod, dryrun bool) error {
 		return err
 	}
 
+	lac := KubernetesLastAppliedConfiguration{}
+	json.Unmarshal(([]byte)(deployment.Annotations["kubectl.kubernetes.io/last-applied-configuration"]), &lac)
+
 	telepresenceName := deployment.Labels["telepresence"]
 	originalDeploymentName := strings.ReplaceAll(deploymentName, "-"+telepresenceName, "")
-
-	lac := KubernetesLastAppliedConfiguration{}
-
 	originalDeployment, err := deploymentClientset.Get(context.TODO(), originalDeploymentName, metav1.GetOptions{})
 	if err != nil {
 		return err
