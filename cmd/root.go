@@ -28,14 +28,14 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/takumakume/telepolice/telepolice"
+	"github.com/4spacesdk/telecleaner/telecleaner"
 )
 
 var (
 	useInClusterConfig           bool
 	concurrency                  int
 	ignorerablePodStartTimeOfSec int
-	telepoliceObj                *telepolice.Telepolice
+	telepoliceObj                *telecleaner.Telecleaner
 	namespaces                   string
 	allNamespaces                bool
 	verbose                      bool
@@ -43,7 +43,7 @@ var (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "telepolice",
+	Use:   "telecleaner",
 	Short: "A tool to clean up broken telepresence resources",
 	Long:  `A tool to clean up broken telepresence resources`,
 }
@@ -72,12 +72,12 @@ func strToSlice(s string) []string {
 }
 
 func initCommand() {
-	c := telepolice.NewConfig(concurrency, ignorerablePodStartTimeOfSec)
+	c := telecleaner.NewConfig(concurrency, ignorerablePodStartTimeOfSec)
 	var err error
 	if useInClusterConfig {
-		telepoliceObj, err = telepolice.NewByInClusterConfig(c)
+		telepoliceObj, err = telecleaner.NewByInClusterConfig(c)
 	} else {
-		telepoliceObj, err = telepolice.NewByKubeConfig(c)
+		telepoliceObj, err = telecleaner.NewByKubeConfig(c)
 	}
 
 	if verbose {

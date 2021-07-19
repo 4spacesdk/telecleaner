@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/takumakume/telepolice/pkg/kube"
+	"github.com/4spacesdk/telecleaner/pkg/kube"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +27,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-type Telepolice struct {
+type Telecleaner struct {
 	kubernetes                   *kube.Kubernetes
 	namespaces                   []string
 	concurrency                  int
@@ -35,7 +35,7 @@ type Telepolice struct {
 	verbose                      bool
 }
 
-func NewByKubeConfig(c *Config) (*Telepolice, error) {
+func NewByKubeConfig(c *Config) (*Telecleaner, error) {
 	path := os.Getenv("KUBECONFIG")
 	if path == "" {
 		d, err := homedir.Dir()
@@ -51,7 +51,7 @@ func NewByKubeConfig(c *Config) (*Telepolice, error) {
 	return new(c, k)
 }
 
-func NewByInClusterConfig(c *Config) (*Telepolice, error) {
+func NewByInClusterConfig(c *Config) (*Telecleaner, error) {
 	k, err := kube.NewByInClusterConfig()
 	if err != nil {
 		return nil, err
@@ -59,26 +59,26 @@ func NewByInClusterConfig(c *Config) (*Telepolice, error) {
 	return new(c, k)
 }
 
-func (te *Telepolice) EnableVerbose() {
+func (te *Telecleaner) EnableVerbose() {
 	te.verbose = true
 }
 
-func (te *Telepolice) SetNamespaces(namespaces []string) {
+func (te *Telecleaner) SetNamespaces(namespaces []string) {
 	te.namespaces = namespaces
-	te.debug(fmt.Sprintf("telepolice.SetNamespaces() %v", namespaces))
+	te.debug(fmt.Sprintf("telecleaner.SetNamespaces() %v", namespaces))
 }
 
-func (te *Telepolice) SetAllNamespaces() error {
+func (te *Telecleaner) SetAllNamespaces() error {
 	namespaces, err := te.getAllNamespaceNames()
 	if err != nil {
 		return err
 	}
 	te.namespaces = namespaces
-	te.debug(fmt.Sprintf("telepolice.SetAllNamespaces() %v", namespaces))
+	te.debug(fmt.Sprintf("telecleaner.SetAllNamespaces() %v", namespaces))
 	return nil
 }
 
-func (te *Telepolice) Get() error {
+func (te *Telecleaner) Get() error {
 	rr, err := te.get()
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func (te *Telepolice) Get() error {
 	return nil
 }
 
-func (te *Telepolice) getAllNamespaceNames() ([]string, error) {
+func (te *Telecleaner) getAllNamespaceNames() ([]string, error) {
 	namespaceList, err := te.kubernetes.Clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -120,7 +120,7 @@ func (te *Telepolice) getAllNamespaceNames() ([]string, error) {
 	return namespaceNames, nil
 }
 
-func (te *Telepolice) get() ([]resouce, error) {
+func (te *Telecleaner) get() ([]resouce, error) {
 	pods, err := te.getPods()
 	if err != nil {
 		return nil, err
@@ -144,12 +144,12 @@ func (te *Telepolice) get() ([]resouce, error) {
 				func() error {
 					status, err = te.getPodStatus(pod)
 					if err != nil {
-						te.error(fmt.Sprintf("telepolice.getPodStatus() got error, pod: %s %s", pod.Name, err.Error()))
+						te.error(fmt.Sprintf("telecleaner.getPodStatus() got error, pod: %s %s", pod.Name, err.Error()))
 						return err
 					}
 					if !status {
-						te.debug(fmt.Sprintf("telepolice.getPodStatus() was false, pod: %s", pod.Name))
-						return fmt.Errorf("telepolice.getPodStatus() was false, pod: %s", pod.Name)
+						te.debug(fmt.Sprintf("telecleaner.getPodStatus() was false, pod: %s", pod.Name))
+						return fmt.Errorf("telecleaner.getPodStatus() was false, pod: %s", pod.Name)
 					}
 					return nil
 				},
@@ -171,21 +171,21 @@ func (te *Telepolice) get() ([]resouce, error) {
 	return rr, nil
 }
 
-func (te *Telepolice) info(s string) {
+func (te *Telecleaner) info(s string) {
 	fmt.Printf("%s %s\n", time.Now(), s)
 }
 
-func (te *Telepolice) error(s string) {
+func (te *Telecleaner) error(s string) {
 	fmt.Printf("%s [ERROR] %s\n", time.Now(), s)
 }
 
-func (te *Telepolice) debug(s string) {
+func (te *Telecleaner) debug(s string) {
 	if te.verbose {
 		fmt.Printf("%s [DEBUG] %s\n", time.Now(), s)
 	}
 }
 
-func (te *Telepolice) cleanup(dryrun bool) error {
+func (te *Telecleaner) cleanup(dryrun bool) error {
 	rr, err := te.get()
 	if err != nil {
 		return err
@@ -225,11 +225,11 @@ func (te *Telepolice) cleanup(dryrun bool) error {
 	return nil
 }
 
-func (te *Telepolice) Cleanup(dryrun bool) error {
+func (te *Telecleaner) Cleanup(dryrun bool) error {
 	return te.cleanup(dryrun)
 }
 
-func (te *Telepolice) WatchWithCleanup(dryrun bool, intervalSec int) error {
+func (te *Telecleaner) WatchWithCleanup(dryrun bool, intervalSec int) error {
 	for range time.Tick(time.Duration(intervalSec) * time.Second) {
 		if err := te.cleanup(dryrun); err != nil {
 			return err
@@ -238,8 +238,8 @@ func (te *Telepolice) WatchWithCleanup(dryrun bool, intervalSec int) error {
 	return nil
 }
 
-func new(c *Config, kubernetes *kube.Kubernetes) (*Telepolice, error) {
-	return &Telepolice{
+func new(c *Config, kubernetes *kube.Kubernetes) (*Telecleaner, error) {
+	return &Telecleaner{
 		kubernetes:                   kubernetes,
 		concurrency:                  c.Concurrency,
 		ignorerablePodStartTimeOfSec: c.IgnorerablePodStartTimeOfSec,
@@ -248,10 +248,10 @@ func new(c *Config, kubernetes *kube.Kubernetes) (*Telepolice, error) {
 	}, nil
 }
 
-func (te *Telepolice) getPods() ([]corev1.Pod, error) {
+func (te *Telecleaner) getPods() ([]corev1.Pod, error) {
 	pods := []corev1.Pod{}
 	for _, namespace := range te.namespaces {
-		te.debug(fmt.Sprintf("telepolice.getPods() namespace: %s", namespace))
+		te.debug(fmt.Sprintf("telecleaner.getPods() namespace: %s", namespace))
 		podList, err := te.kubernetes.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
 			LabelSelector: "telepresence",
 		})
@@ -267,7 +267,7 @@ func (te *Telepolice) getPods() ([]corev1.Pod, error) {
 	return pods, nil
 }
 
-func (te *Telepolice) checkPassageOfPodStartTime(now time.Time, podStartTime *metav1.Time) bool {
+func (te *Telecleaner) checkPassageOfPodStartTime(now time.Time, podStartTime *metav1.Time) bool {
 	thresholdTime := podStartTime.Add(time.Duration(te.ignorerablePodStartTimeOfSec) * time.Second)
 	if now.Unix() > thresholdTime.Unix() {
 		return true
@@ -276,8 +276,8 @@ func (te *Telepolice) checkPassageOfPodStartTime(now time.Time, podStartTime *me
 	return false
 }
 
-func (te *Telepolice) getPodStatus(pod corev1.Pod) (bool, error) {
-	te.debug(fmt.Sprintf("telepolice.getPodStatus() %s", pod.Name))
+func (te *Telecleaner) getPodStatus(pod corev1.Pod) (bool, error) {
+	te.debug(fmt.Sprintf("telecleaner.getPodStatus() %s", pod.Name))
 
 	if !te.checkPassageOfPodStartTime(time.Now(), pod.Status.StartTime) {
 		te.debug(fmt.Sprintf("The Pod will skip the check because it is not passage since the start %d seconds: %s", te.ignorerablePodStartTimeOfSec, pod.Name))
@@ -335,8 +335,8 @@ func (te *Telepolice) getPodStatus(pod corev1.Pod) (bool, error) {
 	return false, nil
 }
 
-func (te *Telepolice) cleanupOne(pod corev1.Pod, dryrun bool) error {
-	te.debug(fmt.Sprintf("telepolice.cleanupOne() %s, dryrun: %t", pod.Name, dryrun))
+func (te *Telecleaner) cleanupOne(pod corev1.Pod, dryrun bool) error {
+	te.debug(fmt.Sprintf("telecleaner.cleanupOne() %s, dryrun: %t", pod.Name, dryrun))
 
 	replicaSetName := ""
 	for _, ref := range pod.OwnerReferences {
@@ -401,7 +401,7 @@ func (te *Telepolice) cleanupOne(pod corev1.Pod, dryrun bool) error {
 	return nil
 }
 
-func (te *Telepolice) printTable(header []string, data [][]string) {
+func (te *Telecleaner) printTable(header []string, data [][]string) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader(header)
 	table.SetAutoWrapText(false)
