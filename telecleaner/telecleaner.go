@@ -1,6 +1,7 @@
 package telecleaner
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -107,7 +108,7 @@ func (te *Telecleaner) Get() error {
 }
 
 func (te *Telecleaner) getAllNamespaceNames() ([]string, error) {
-	namespaceList, err := te.kubernetes.Clientset.CoreV1().Namespaces().List(metav1.ListOptions{})
+	namespaceList, err := te.kubernetes.Clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +154,7 @@ func (te *Telecleaner) get() ([]resouce, error) {
 					}
 					return nil
 				},
-				retry.DelayType(func(n uint, config *retry.Config) time.Duration {
+				retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
 					return time.Duration(n) * time.Second
 				}),
 				retry.Attempts(3),
@@ -252,7 +253,7 @@ func (te *Telecleaner) getPods() ([]corev1.Pod, error) {
 	pods := []corev1.Pod{}
 	for _, namespace := range te.namespaces {
 		te.debug(fmt.Sprintf("telecleaner.getPods() namespace: %s", namespace))
-		podList, err := te.kubernetes.Clientset.CoreV1().Pods(namespace).List(metav1.ListOptions{
+		podList, err := te.kubernetes.Clientset.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
 			LabelSelector: "telepresence",
 		})
 		if err != nil {
@@ -349,7 +350,7 @@ func (te *Telecleaner) cleanupOne(pod corev1.Pod, dryrun bool) error {
 		return fmt.Errorf("Can't find ReplicaSet name in OwnerReferences: %s", pod.Name)
 	}
 
-	replicaSet, err := te.kubernetes.Clientset.AppsV1().ReplicaSets(pod.Namespace).Get(replicaSetName, metav1.GetOptions{})
+	replicaSet, err := te.kubernetes.Clientset.AppsV1().ReplicaSets(pod.Namespace).Get(context.TODO(), replicaSetName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -367,12 +368,12 @@ func (te *Telecleaner) cleanupOne(pod corev1.Pod, dryrun bool) error {
 
 	deploymentClientset := te.kubernetes.Clientset.AppsV1().Deployments(pod.Namespace)
 
-	deployment, err := deploymentClientset.Get(deploymentName, metav1.GetOptions{})
+	deployment, err := deploymentClientset.Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-    return fmt.Errorf("Label? %s", deployment.Labels.telepresence);
+    return fmt.Errorf("Label? %s", deployment.Labels["telepresence"]);
 
 	lac := KubernetesLastAppliedConfiguration{}
 	json.Unmarshal(([]byte)(deployment.Annotations["kubectl.kubernetes.io/last-applied-configuration"]), &lac)
@@ -380,7 +381,7 @@ func (te *Telecleaner) cleanupOne(pod corev1.Pod, dryrun bool) error {
 		return fmt.Errorf("Can't find original Deployment name in annotations: %s", pod.Name)
 	}
 
-	originalDeployment, err := deploymentClientset.Get(filepath.Base(lac.Metadata.SelfLink), metav1.GetOptions{})
+	originalDeployment, err := deploymentClientset.Get(context.TODO(), filepath.Base(lac.Metadata.SelfLink), metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
@@ -388,12 +389,12 @@ func (te *Telecleaner) cleanupOne(pod corev1.Pod, dryrun bool) error {
 	if !dryrun {
 		newOriginalDeployment := originalDeployment
 		newOriginalDeployment.Spec.Replicas = &lac.Spec.Replicas
-		_, err = deploymentClientset.Update(newOriginalDeployment)
+		_, err = deploymentClientset.Update(context.TODO(), newOriginalDeployment, metav1.UpdateOptions{})
 		if err != nil {
 			return err
 		}
 
-		if err := deploymentClientset.Delete(deployment.Name, &metav1.DeleteOptions{}); err != nil {
+		if err := deploymentClientset.Delete(context.TODO(), deployment.Name, metav1.DeleteOptions{}); err != nil {
 			return err
 		}
 	}
