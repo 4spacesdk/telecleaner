@@ -1,0 +1,7 @@
+- main: main.go
+  binary: telecleaner
+  goos:
+    - darwin
+    - linux
+  goarch:
+    - amd64
